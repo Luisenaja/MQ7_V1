@@ -9,6 +9,14 @@ int sum =0;
 float Vout = 0;
 float Co_out = 0;
 
+  
+    float RSAir=0;
+    float Ro=0;
+    float RS=0;
+    float Ratio=0;
+    float ppm=0;
+    int RL = 10;
+
 static inline void Delay_1us(uint32_t nCnt_1us)
 {
   volatile uint32_t nCnt;
@@ -208,11 +216,7 @@ int main(void)
 while (1) {
     
     int i=0;
-    float RSAir=0;
-    float Ro=0;
-    float RS=0;
-    float Ratio=0;
-    float ppm=0;
+    uint8_t PPM;
 
     for (i =0; i<5;i++){
     	adc_value = ADC_GetConversionValue(ADC1);
@@ -225,7 +229,7 @@ while (1) {
     Vout = (adc_average*3.3)/4095;
 
 
-    RSAir = (((3.3 *10 ) / Vout)-10);
+    RSAir = (((3.3 * RL ) / Vout)-RL);
     if(RSAir < 0)
     {
       RSAir =0;
@@ -237,7 +241,7 @@ while (1) {
       Ro = 0;
     }
 
-    RS = (((3.3 *10 ) / Vout)-10);
+    RS = (((3.3 *RL ) / Vout)-RL);
     if(RS < 0)
     {
       RS = 0;
@@ -250,6 +254,7 @@ while (1) {
     }
 
     ppm = 99.014 * (pow(Ratio, -1.518));
+    PPM = ppm;
 
     if(ppm <= 0)
     {
@@ -260,8 +265,8 @@ while (1) {
       ppm=999;
     }
 
-    sprintf(buffer2, "Vout : %f RSAir = %f Ro = %f \n",Vout,RSAir,Ro );
-    sprintf(buffer, "PPMout : %f \n",ppm);
+    sprintf(buffer2, "Vout : %f RSAir = %f Ro = %f RL = %d \n",Vout,RSAir,Ro,RL );
+    sprintf(buffer, "PPMout : %f PPM : %d \n",ppm,PPM);
     usart_puts(buffer2); 
     usart_puts(buffer); 
 
