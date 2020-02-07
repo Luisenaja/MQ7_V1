@@ -1,1 +1,1 @@
-MQ7_V1
+MQ7_sensor
