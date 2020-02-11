@@ -210,18 +210,20 @@ void setup_LEDb(){
 int main(void){
   init_adc();
   init_usart1();
-  //setup_LEDb();
+  setup_LEDb();
   
 
 
 while (1) {
+    
     read_volt();
     calibrate ();
     convert_PPM();
+    
     }
 }
 
-void calibrate (void);    ///////calibrate sensor /////////////
+void calibrate ();    ///////calibrate sensor /////////////
 void calibrate (){
     
     RSAir = (((3.3 * RL ) / Vout)-RL);
@@ -236,37 +238,38 @@ void calibrate (){
       Ro = 0;
     }
 
-    RS = (((3.3 *RL ) / Vout)-RL);
+    RS = (((3.3 * RL ) / Vout)- RL);
     if(RS < 0)
     {
       RS = 0;
     } 
 
-    sprintf(buffer2, "from calibrate RSAir = %f  Ro = %f  RS_end =  RS  \n",RSAir,Ro, RS);
+    sprintf(buffer2, "from calibrate RSAir = %f  Ro = %f  RS_end = %f \n",RSAir,Ro, RS);
     usart_puts(buffer2);
 }
 
 
-float read_volt(float);   //////// read volt form A0 ADC 
-float read_volt(){
+void read_volt();   //////// read volt form A0 ADC 
+void read_volt(){
 
   int16_t adc_value = 0;
   int i=0;
+  sum =0; 
   for (i =0; i<5;i++){
       adc_value = ADC_GetConversionValue(ADC1);
       sum =  adc_value + sum; 
       Delay_1us(2000000);
     }
     adc_average = sum/5;
-    Vout = (adc_average*3.3)/4095;
-    sum =0;
+    Vout = (adc_average*3.3)/4095; 
+    
     sprintf(buffer2, "from readvolt Vout = %f  \n",Vout);
     usart_puts(buffer2);
-    return Vout;
+    //return Vout;
 }
 
-float convert_PPM(void);  ////// convert to PPM for using in CO 
-float convert_PPM(){
+void convert_PPM();  ////// convert to PPM for using in CO 
+void convert_PPM(){
    Ratio = RS / Ro;
     if(Ratio <= 0 || Ratio >100)
     {
@@ -276,7 +279,7 @@ float convert_PPM(){
     sprintf(buffer2, " RS = %f Ro = %f Ratio = %f  \n",RS,Ro,Ratio);
     usart_puts(buffer2);
 
-    ppm = 99.014 * (pow(Ratio, -1.518));
+    ppm = 99.0415 * (pow(Ratio, -1.5184));
     PPM = ppm;
 
     if(ppm <= 0)
@@ -291,7 +294,7 @@ float convert_PPM(){
     sprintf(buffer2, " CO_ppm = %f \n",ppm);
     usart_puts(buffer2);
 
-    return ppm;
+    //return ppm;
 }
 
     // if (co_out <= 500 && co_out > 10 ) {
