@@ -15,7 +15,10 @@ float Co_out = 0;
     float RS=0;
     float Ratio=0;
     float ppm=0;
-    int RL = 10;
+    int RL = 1;
+    uint8_t PPM;
+    //char buffer[80] = {'\0'};
+    char buffer2[80] = {'\0'};
 
 static inline void Delay_1us(uint32_t nCnt_1us)
 {
@@ -203,32 +206,24 @@ void setup_LEDb(){
 
 
 
-int16_t adc_value = 0;
-int main(void)
-{
+
+int main(void){
   init_adc();
   init_usart1();
   //setup_LEDb();
-  char buffer[80] = {'\0'};
-  char buffer2[80] = {'\0'};
+  
 
 
 while (1) {
-    
-    int i=0;
-    uint8_t PPM;
-
-    for (i =0; i<5;i++){
-    	adc_value = ADC_GetConversionValue(ADC1);
-    	sum =  adc_value + sum; 
-      Delay_1us(2000000);
+    read_volt();
+    calibrate ();
+    convert_PPM();
     }
-    //i = 0;
+}
 
-    adc_average = sum/5;
-    Vout = (adc_average*3.3)/4095;
-
-
+void calibrate (void);    ///////calibrate sensor /////////////
+void calibrate (){
+    
     RSAir = (((3.3 * RL ) / Vout)-RL);
     if(RSAir < 0)
     {
@@ -245,13 +240,41 @@ while (1) {
     if(RS < 0)
     {
       RS = 0;
-    }
+    } 
 
-    Ratio = RS / Ro;
+    sprintf(buffer2, "from calibrate RSAir = %f  Ro = %f  RS_end =  RS  \n",RSAir,Ro, RS);
+    usart_puts(buffer2);
+}
+
+
+float read_volt(float);   //////// read volt form A0 ADC 
+float read_volt(){
+
+  int16_t adc_value = 0;
+  int i=0;
+  for (i =0; i<5;i++){
+      adc_value = ADC_GetConversionValue(ADC1);
+      sum =  adc_value + sum; 
+      Delay_1us(2000000);
+    }
+    adc_average = sum/5;
+    Vout = (adc_average*3.3)/4095;
+    sum =0;
+    sprintf(buffer2, "from readvolt Vout = %f  \n",Vout);
+    usart_puts(buffer2);
+    return Vout;
+}
+
+float convert_PPM(void);  ////// convert to PPM for using in CO 
+float convert_PPM(){
+   Ratio = RS / Ro;
     if(Ratio <= 0 || Ratio >100)
     {
       Ratio = 0.01;
     }
+
+    sprintf(buffer2, " RS = %f Ro = %f Ratio = %f  \n",RS,Ro,Ratio);
+    usart_puts(buffer2);
 
     ppm = 99.014 * (pow(Ratio, -1.518));
     PPM = ppm;
@@ -265,12 +288,11 @@ while (1) {
       ppm=999;
     }
 
-    sprintf(buffer2, "Vout : %f RSAir = %f Ro = %f RL = %d \n",Vout,RSAir,Ro,RL );
-    sprintf(buffer, "PPMout : %f PPM : %d \n",ppm,PPM);
-    usart_puts(buffer2); 
-    usart_puts(buffer); 
+    sprintf(buffer2, " CO_ppm = %f \n",ppm);
+    usart_puts(buffer2);
 
-	}
+    return ppm;
+}
 
     // if (co_out <= 500 && co_out > 10 ) {
     // 	sprintf(buffer, "ADC_Value: %d \n",adc_average);
@@ -291,4 +313,3 @@ while (1) {
     // 	 adc_value = 0;
     // }
 
-}
