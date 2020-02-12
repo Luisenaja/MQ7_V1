@@ -198,77 +198,125 @@ void setup_LEDb(){
 	GPIO_Init(GPIOC, &GPIO_InitStructure);
 }
 
+//GLOBAL
+  char buffer[80] = {'\0'};
+  char buffer2[80] = {'\0'};
+  int16_t adc_value = 0;
+  float val = 0.0;
+
+
+float MQCalibration(void)
+{
+  int i = 0;
+  float Rl = 0.0;
+  for (i =0; i<5;i++)
+  {
+    adc_value = ADC_GetConversionValue(ADC1);
+    Rl = 10.0*(4095-adc_value)/adc_value;
+    val =  Rl + val; 
+    Delay_1us(2000000);
+  }
+  val = val/5.0;
+  val = val/9.83;
+  return val;
+}
+
+float MQRead(void)
+{
+  int i;
+  float rs=0;
+
+  for (i=0;i<5;i++) {
+    adc_value = ADC_GetConversionValue(ADC1);
+    rs = 10.0*(4095-adc_value)/adc_value;
+    val =  rs + val;     
+    Delay_1us(2000000);
+  }
+
+  rs = rs/5;
+  return rs;  
+}
 
 
 
 
-
-int16_t adc_value = 0;
 int main(void)
 {
   init_adc();
   init_usart1();
   //setup_LEDb();
-  char buffer[80] = {'\0'};
-  char buffer2[80] = {'\0'};
+  Delay_1us(10000);
+  float ro = MQCalibration();
+  sprintf(buffer2, "Ro = %f \r\n",ro );
+    usart_puts(buffer2);
+
 
 
 while (1) {
+    usart_puts("HELLO WORLD \r\n");
     
-    int i=0;
     uint8_t PPM;
 
-    for (i =0; i<5;i++){
-    	adc_value = ADC_GetConversionValue(ADC1);
-    	sum =  adc_value + sum; 
-      Delay_1us(2000000);
-    }
-    //i = 0;
+    // sprintf(buffer2, "Ro = %f \r\n",ro );
+    // usart_puts(buffer2);
+    float rs_read = MQRead();
+    float rs_ro_ratio = rs_read/ro;
+    sprintf(buffer2, "rs_ro_ratio = %f \r\n",rs_ro_ratio );
+    usart_puts(buffer2);
+    float CoPPM =  pow(10,( ((log(rs_ro_ratio)-0.20)/-0.66) + 1.7));
+    sprintf(buffer2, "CoPPM = %f \r\n",CoPPM );
+    usart_puts(buffer2);
 
-    adc_average = sum/5;
-    Vout = (adc_average*3.3)/4095;
+    
 
 
-    RSAir = (((3.3 * RL ) / Vout)-RL);
-    if(RSAir < 0)
-    {
-      RSAir =0;
-    }
+    // sprintf(buffer2, "Vout : %f RSAir = %f Ro = %f RL = %d \n",Vout,RSAir,Ro,RL );
+    // //i = 0;
 
-    Ro = RSAir/27.5;
-    if (Ro < 0)
-    {
-      Ro = 0;
-    }
+    // adc_average = sum/5;
+    // Vout = (adc_average*3.3)/4095;
 
-    RS = (((3.3 *RL ) / Vout)-RL);
-    if(RS < 0)
-    {
-      RS = 0;
-    }
 
-    Ratio = RS / Ro;
-    if(Ratio <= 0 || Ratio >100)
-    {
-      Ratio = 0.01;
-    }
+    // RSAir = (((3.3 * RL ) / Vout)-RL);
+    // if(RSAir < 0)
+    // {
+    //   RSAir =0;
+    // }
 
-    ppm = 99.014 * (pow(Ratio, -1.518));
-    PPM = ppm;
+    // Ro = RSAir/27.5;
+    // if (Ro < 0)
+    // {
+    //   Ro = 0;
+    // }
 
-    if(ppm <= 0)
-    {
-      ppm=0;
-    }
-    if(ppm > 1000)
-    {
-      ppm=999;
-    }
+    // RS = (((3.3 *RL ) / Vout)-RL);
+    // if(RS < 0)
+    // {
+    //   RS = 0;
+    // }
 
-    sprintf(buffer2, "Vout : %f RSAir = %f Ro = %f RL = %d \n",Vout,RSAir,Ro,RL );
-    sprintf(buffer, "PPMout : %f PPM : %d \n",ppm,PPM);
-    usart_puts(buffer2); 
-    usart_puts(buffer); 
+    // Ratio = RS / Ro;
+    // if(Ratio <= 0 || Ratio >100)
+    // {
+    //   Ratio = 0.01;
+    // }
+
+    // ppm = 99.014 * (pow(Ratio, -1.518));
+    // PPM = ppm;
+
+    // if(ppm <= 0)
+    // {
+    //   ppm=0;
+    // }
+    // if(ppm > 1000)
+    // {
+    //   ppm=999;
+    // }
+
+    // sprintf(buffer2, "Vout : %f RSAir = %f Ro = %f RL = %d \n",Vout,RSAir,Ro,RL );
+    // sprintf(buffer, "PPMout : %f PPM : %d \n",ppm,PPM);
+    // usart_puts(buffer2); 
+    // usart_puts(buffer); 
 
 	}
 
