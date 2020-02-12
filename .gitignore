@@ -72,3 +72,5 @@ dkms.conf
 */firmware.bin
 */Makefile
 Makefile
+
+firmware.bin
