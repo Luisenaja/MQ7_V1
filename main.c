@@ -2,13 +2,15 @@
 #include "stm32f10x_conf.h"
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdbool.h> 
 void send_byte(uint8_t b);
 void usart_puts(char* s);
+//bool preheat(void);
 int adc_average =0;
 int sum =0;
 float Vout = 0;
 float Co_out = 0;
-
+bool preheat(void);
   
     float RSAir=0;
     float Ro=0;
@@ -19,6 +21,7 @@ float Co_out = 0;
     uint8_t PPM;
     //char buffer[80] = {'\0'};
     char buffer2[80] = {'\0'};
+    bool check_heat = false;
 
 static inline void Delay_1us(uint32_t nCnt_1us)
 {
@@ -193,54 +196,25 @@ int main(void){
   
   while (1) {
 
+  while (check_heat == false){
+    preheat();
+  } 
+
   int16_t adc_value = 0;
   int i=0;
   sum =0; 
+
   for (i =0; i<10;i++){
       adc_value = ADC_GetConversionValue(ADC1);
       sum =  adc_value + sum; 
-      //Delay_1us(2000000);
+      Delay_1us(20000);
     }
     adc_average = sum/10;
     Vout = (adc_average*3.3)/4095; 
-    
-    //sprintf(buffer2, "from readvolt Vout = %f  \n",Vout);
-    //usart_puts(buffer2);
-
     RSAir = ((5.0*1)/Vout)-1;
-    //Ro = RSAir/;
-    
-    //RSAir = (((3.3 * RL ) / Vout)-RL);
-
-    //RSAir = RL * (3.3 / Vout - 1);
-    // if(RSAir < 0)
-    // {
-    //   RSAir =0;
-    // }
-
-     //Ro = RSAir/27.5;
-    // if (Ro < 0)
-    // {
-    //   Ro = 0;
-    // }
-
-    // RS = (((3.3 * RL ) / Vout)- RL);
-    // if(RS < 0)
-    // {
-    //   RS = 0;
-    // } 
-
     Ratio = RSAir/0.46; 
-    Delay_1us(200000);
-    //Ratio = (((3.3 * RL ) / Vout)-RL) / RSAir/27.5;
-    //sprintf(buffer2, " Ro = %f  \n",Ro);
-    //usart_puts(buffer2);
-    ///Delay_1us(200000);
-
+    //Delay_1us(200000);
     ppm = 99.0415 * (pow(Ratio, -1.5184));
-    //ppm = 100 * pow((RL/2000 * (3.3 / Vout - 1)),-1.6);
-    //coefficient_A * pow(getRatio(), coefficient_B
-    //Ratio =0;
     if(ppm <= 0)
     {
       ppm=0;
@@ -256,61 +230,19 @@ int main(void){
     }    
 }
 
-// void calibrate (void);    ///////calibrate sensor /////////////
-// void calibrate (){
+bool preheat(){
+    int i =0;
+    int count_heat = 10;
+    sprintf(buffer2, " time heat = %d \n",count_heat);
+    usart_puts(buffer2);
+    for (i =0; i<10;i++){
+      Delay_1us(4000000);
+      count_heat --;
+      sprintf(buffer2, " time heat = %d \n",count_heat);
+      usart_puts(buffer2);
+      check_heat = true;
+    }
+    return check_heat;
+  }
 
-//   int16_t adc_value = 0;
-//   int i=0;
-//   sum =0; 
-//   for (i =0; i<5;i++){
-//       adc_value = ADC_GetConversionValue(ADC1);
-//       sum =  adc_value + sum; 
-//       Delay_1us(2000000);
-//     }
-//     adc_average = sum/5;
-//     Vout = (adc_average*3.3)/4095; 
-    
-//     sprintf(buffer2, "from readvolt Vout = %f  \n",Vout);
-//     usart_puts(buffer2);
-    
-//     RSAir = (((3.3 * RL ) / Vout)-RL);
-//     if(RSAir < 0)
-//     {
-//       RSAir =0;
-//     }
 
-//     Ro = RSAir/27.5;
-//     if (Ro < 0)
-//     {
-//       Ro = 0;
-//     }
-
-//     RS = (((3.3 * RL ) / Vout)- RL);
-//     if(RS < 0)
-//     {
-//       RS = 0;
-//     } 
-
-//     sprintf(buffer2, "from calibrate RSAir = %f  Ro = %f  RS_end = %f \n",RSAir,Ro, RS);
-//     usart_puts(buffer2);
-
-//     Ratio = (((3.3 * RL ) / Vout)-RL) / (RSAir/27.5);
-//     sprintf(buffer2, " Ratio = %f  \n",Ratio);
-//     usart_puts(buffer2);
-
-//     ppm = 99.0415 * (pow(Ratio, -1.5184));
-
-//     if(ppm <= 0)
-//     {
-//       ppm=0;
-//     }
-//     if(ppm > 1000)
-//     {
-//       ppm=999;
-//     }
-
-//     sprintf(buffer2, " CO_ppm = %f \n",ppm);
-//     usart_puts(buffer2);
-//     }
-
-// }
