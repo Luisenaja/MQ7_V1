@@ -135,24 +135,7 @@ void init_adc()
   GPIO_InitStructure.GPIO_Pin = 	GPIO_Pin_0; 	
   GPIO_Init(GPIOA, &GPIO_InitStructure);
 
-  /* DMA1 channel1 configuration ----------------------------------------------*/
-  DMA_DeInit(DMA1_Channel1);
-  DMA_InitStructure.DMA_PeripheralBaseAddr = ((uint32_t)0x4001244C);
-  DMA_InitStructure.DMA_MemoryBaseAddr = (uint32_t)&ADCConvertedValue;
-  DMA_InitStructure.DMA_DIR = DMA_DIR_PeripheralSRC;
-  DMA_InitStructure.DMA_BufferSize = 1;
-  DMA_InitStructure.DMA_PeripheralInc = DMA_PeripheralInc_Disable;
-  DMA_InitStructure.DMA_MemoryInc = DMA_MemoryInc_Disable;
-  DMA_InitStructure.DMA_PeripheralDataSize = DMA_PeripheralDataSize_HalfWord;
-  DMA_InitStructure.DMA_MemoryDataSize = DMA_MemoryDataSize_HalfWord;
-  DMA_InitStructure.DMA_Mode = DMA_Mode_Circular;
-  DMA_InitStructure.DMA_Priority = DMA_Priority_High;
-  DMA_InitStructure.DMA_M2M = DMA_M2M_Disable;
-  DMA_Init(DMA1_Channel1, &DMA_InitStructure);
   
-  /* Enable DMA1 channel1 */
-  DMA_Cmd(DMA1_Channel1, ENABLE);
-
   // ADC_TempSensorVrefintCmd(ENABLE);   
 
   /* ADC1 configuration ------------------------------------------------------*/
@@ -203,54 +186,12 @@ void setup_LEDb(){
 
 
 
-
-
-
-
 int main(void){
   init_adc();
   init_usart1();
   setup_LEDb();
   
-
-
-while (1) {
-    
-    read_volt();
-    calibrate ();
-    convert_PPM();
-    
-    }
-}
-
-void calibrate ();    ///////calibrate sensor /////////////
-void calibrate (){
-    
-    RSAir = (((3.3 * RL ) / Vout)-RL);
-    if(RSAir < 0)
-    {
-      RSAir =0;
-    }
-
-    Ro = RSAir/27.5;
-    if (Ro < 0)
-    {
-      Ro = 0;
-    }
-
-    RS = (((3.3 * RL ) / Vout)- RL);
-    if(RS < 0)
-    {
-      RS = 0;
-    } 
-
-    sprintf(buffer2, "from calibrate RSAir = %f  Ro = %f  RS_end = %f \n",RSAir,Ro, RS);
-    usart_puts(buffer2);
-}
-
-
-void read_volt();   //////// read volt form A0 ADC 
-void read_volt(){
+  while (1) {
 
   int16_t adc_value = 0;
   int i=0;
@@ -265,22 +206,34 @@ void read_volt(){
     
     sprintf(buffer2, "from readvolt Vout = %f  \n",Vout);
     usart_puts(buffer2);
-    //return Vout;
-}
+    
+    // RSAir = (((3.3 * RL ) / Vout)-RL);
+    // if(RSAir < 0)
+    // {
+    //   RSAir =0;
+    // }
 
-void convert_PPM();  ////// convert to PPM for using in CO 
-void convert_PPM(){
-   Ratio = RS / Ro;
-    if(Ratio <= 0 || Ratio >100)
-    {
-      Ratio = 0.01;
-    }
+    // Ro = RSAir/27.5;
+    // if (Ro < 0)
+    // {
+    //   Ro = 0;
+    // }
 
-    sprintf(buffer2, " RS = %f Ro = %f Ratio = %f  \n",RS,Ro,Ratio);
+    // RS = (((3.3 * RL ) / Vout)- RL);
+    // if(RS < 0)
+    // {
+    //   RS = 0;
+    // } 
+
+    
+    Ratio = (((3.3 * RL ) / Vout)-RL) / (RSAir/27.5);
+    // sprintf(buffer2, "from calibrate RSAir = %f  Ro = %f  RS_end = %f \n",RSAir,Ro, RS);
+    // usart_puts(buffer2);
+
+    sprintf(buffer2, " Ratio = %f  \n",Ratio);
     usart_puts(buffer2);
 
     ppm = 99.0415 * (pow(Ratio, -1.5184));
-    PPM = ppm;
 
     if(ppm <= 0)
     {
@@ -293,26 +246,64 @@ void convert_PPM(){
 
     sprintf(buffer2, " CO_ppm = %f \n",ppm);
     usart_puts(buffer2);
-
-    //return ppm;
+    }    
 }
 
-    // if (co_out <= 500 && co_out > 10 ) {
-    // 	sprintf(buffer, "ADC_Value: %d \n",adc_average);
-    // 	sprintf(buffer2, "co_out: %.02f \n",Vout);
-    // 	usart_puts(buffer);
-    // 	usart_puts(buffer2);
-    // 	Delay_1us(100000);
-    // 	sum = 0;
-    // 	Vout = 0;
-    // 	adc_average = 0;
-    // 	adc_value = 0;
-    // }
-    // else {
-    // 	 usart_puts("Out_of_range");
-    // 	 sum = 0;
-    // 	 Vout = 0;
-    // 	 adc_average = 0;
-    // 	 adc_value = 0;
-    // }
+// void calibrate (void);    ///////calibrate sensor /////////////
+// void calibrate (){
 
+//   int16_t adc_value = 0;
+//   int i=0;
+//   sum =0; 
+//   for (i =0; i<5;i++){
+//       adc_value = ADC_GetConversionValue(ADC1);
+//       sum =  adc_value + sum; 
+//       Delay_1us(2000000);
+//     }
+//     adc_average = sum/5;
+//     Vout = (adc_average*3.3)/4095; 
+    
+//     sprintf(buffer2, "from readvolt Vout = %f  \n",Vout);
+//     usart_puts(buffer2);
+    
+//     RSAir = (((3.3 * RL ) / Vout)-RL);
+//     if(RSAir < 0)
+//     {
+//       RSAir =0;
+//     }
+
+//     Ro = RSAir/27.5;
+//     if (Ro < 0)
+//     {
+//       Ro = 0;
+//     }
+
+//     RS = (((3.3 * RL ) / Vout)- RL);
+//     if(RS < 0)
+//     {
+//       RS = 0;
+//     } 
+
+//     sprintf(buffer2, "from calibrate RSAir = %f  Ro = %f  RS_end = %f \n",RSAir,Ro, RS);
+//     usart_puts(buffer2);
+
+//     Ratio = (((3.3 * RL ) / Vout)-RL) / (RSAir/27.5);
+//     sprintf(buffer2, " Ratio = %f  \n",Ratio);
+//     usart_puts(buffer2);
+
+//     ppm = 99.0415 * (pow(Ratio, -1.5184));
+
+//     if(ppm <= 0)
+//     {
+//       ppm=0;
+//     }
+//     if(ppm > 1000)
+//     {
+//       ppm=999;
+//     }
+
+//     sprintf(buffer2, " CO_ppm = %f \n",ppm);
+//     usart_puts(buffer2);
+//     }
+
+// }
