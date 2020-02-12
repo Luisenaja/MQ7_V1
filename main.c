@@ -13,9 +13,9 @@ float Co_out = 0;
     float RSAir=0;
     float Ro=0;
     float RS=0;
-    float Ratio=0;
+    double Ratio=0;
     float ppm=0;
-    int RL = 1;
+    int RL = 1000;
     uint8_t PPM;
     //char buffer[80] = {'\0'};
     char buffer2[80] = {'\0'};
@@ -196,24 +196,29 @@ int main(void){
   int16_t adc_value = 0;
   int i=0;
   sum =0; 
-  for (i =0; i<5;i++){
+  for (i =0; i<10;i++){
       adc_value = ADC_GetConversionValue(ADC1);
       sum =  adc_value + sum; 
-      Delay_1us(2000000);
+      //Delay_1us(2000000);
     }
-    adc_average = sum/5;
+    adc_average = sum/10;
     Vout = (adc_average*3.3)/4095; 
     
-    sprintf(buffer2, "from readvolt Vout = %f  \n",Vout);
-    usart_puts(buffer2);
+    //sprintf(buffer2, "from readvolt Vout = %f  \n",Vout);
+    //usart_puts(buffer2);
+
+    RSAir = ((5.0*1)/Vout)-1;
+    //Ro = RSAir/;
     
-    // RSAir = (((3.3 * RL ) / Vout)-RL);
+    //RSAir = (((3.3 * RL ) / Vout)-RL);
+
+    //RSAir = RL * (3.3 / Vout - 1);
     // if(RSAir < 0)
     // {
     //   RSAir =0;
     // }
 
-    // Ro = RSAir/27.5;
+     //Ro = RSAir/27.5;
     // if (Ro < 0)
     // {
     //   Ro = 0;
@@ -225,16 +230,17 @@ int main(void){
     //   RS = 0;
     // } 
 
-    
-    Ratio = (((3.3 * RL ) / Vout)-RL) / (RSAir/27.5);
-    // sprintf(buffer2, "from calibrate RSAir = %f  Ro = %f  RS_end = %f \n",RSAir,Ro, RS);
-    // usart_puts(buffer2);
-
-    sprintf(buffer2, " Ratio = %f  \n",Ratio);
-    usart_puts(buffer2);
+    Ratio = RSAir/0.46; 
+    Delay_1us(200000);
+    //Ratio = (((3.3 * RL ) / Vout)-RL) / RSAir/27.5;
+    //sprintf(buffer2, " Ro = %f  \n",Ro);
+    //usart_puts(buffer2);
+    ///Delay_1us(200000);
 
     ppm = 99.0415 * (pow(Ratio, -1.5184));
-
+    //ppm = 100 * pow((RL/2000 * (3.3 / Vout - 1)),-1.6);
+    //coefficient_A * pow(getRatio(), coefficient_B
+    //Ratio =0;
     if(ppm <= 0)
     {
       ppm=0;
@@ -246,6 +252,7 @@ int main(void){
 
     sprintf(buffer2, " CO_ppm = %f \n",ppm);
     usart_puts(buffer2);
+    //ppm =0;
     }    
 }
 
