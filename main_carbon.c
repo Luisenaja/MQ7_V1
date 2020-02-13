@@ -2,33 +2,20 @@
 #include "stm32f10x_conf.h"
 #include <stdio.h>
 #include <stdlib.h>
-#include <stdbool.h> 
-#define ratio_clean_air 27.5
-#define RL 10.0
-#define Volt_sensor 5
-
-///////// define fuction ///////////////
 void send_byte(uint8_t b);
 void usart_puts(char* s);
-void read_CO(void);
-bool calibration_ro(void); 
-
-
 int adc_average =0;
 int sum =0;
 float Vout = 0;
-bool preheat(void);
+float Co_out = 0;
 
   
     float RSAir=0;
     float Ro=0;
-    float Ro_Cal = 0;
-    double Ratio=0; 
+    float RS=0;
+    float Ratio=0;
     float ppm=0;
-    uint8_t PPM;
-    char buffer2[80] = {'\0'};
-    bool check_heat = false;
-    bool Ro_cal_bol;
+    int RL = 10;
 
 static inline void Delay_1us(uint32_t nCnt_1us)
 {
@@ -145,7 +132,24 @@ void init_adc()
   GPIO_InitStructure.GPIO_Pin = 	GPIO_Pin_0; 	
   GPIO_Init(GPIOA, &GPIO_InitStructure);
 
+  /* DMA1 channel1 configuration ----------------------------------------------*/
+  DMA_DeInit(DMA1_Channel1);
+  DMA_InitStructure.DMA_PeripheralBaseAddr = ((uint32_t)0x4001244C);
+  DMA_InitStructure.DMA_MemoryBaseAddr = (uint32_t)&ADCConvertedValue;
+  DMA_InitStructure.DMA_DIR = DMA_DIR_PeripheralSRC;
+  DMA_InitStructure.DMA_BufferSize = 1;
+  DMA_InitStructure.DMA_PeripheralInc = DMA_PeripheralInc_Disable;
+  DMA_InitStructure.DMA_MemoryInc = DMA_MemoryInc_Disable;
+  DMA_InitStructure.DMA_PeripheralDataSize = DMA_PeripheralDataSize_HalfWord;
+  DMA_InitStructure.DMA_MemoryDataSize = DMA_MemoryDataSize_HalfWord;
+  DMA_InitStructure.DMA_Mode = DMA_Mode_Circular;
+  DMA_InitStructure.DMA_Priority = DMA_Priority_High;
+  DMA_InitStructure.DMA_M2M = DMA_M2M_Disable;
+  DMA_Init(DMA1_Channel1, &DMA_InitStructure);
   
+  /* Enable DMA1 channel1 */
+  DMA_Cmd(DMA1_Channel1, ENABLE);
+
   // ADC_TempSensorVrefintCmd(ENABLE);   
 
   /* ADC1 configuration ------------------------------------------------------*/
@@ -194,101 +198,145 @@ void setup_LEDb(){
 	GPIO_Init(GPIOC, &GPIO_InitStructure);
 }
 
+//GLOBAL
+  char buffer[80] = {'\0'};
+  char buffer2[80] = {'\0'};
+  int16_t adc_value = 0;
+  float val = 0.0;
 
 
-int main(void){
-  init_adc();
-  init_usart1();
-  setup_LEDb();
-  Ro_cal_bol = false;
-
-  
-  while (1) {
-
-  while (check_heat == false){
-    preheat();
-    usart_puts("heat complete\n");
-    } 
-
-    if (Ro_cal_bol == false){
-    calibration_ro();
-    usart_puts("Calibration complete\n");
-    }
-
-    read_CO();
-    usart_puts("Finshed reading\n");
+float MQCalibration(void)
+{
+  int i = 0;
+  float Rl = 0.0;
+  for (i =0; i<5;i++)
+  {
+    adc_value = ADC_GetConversionValue(ADC1);
+    Rl = 10.0*(4095-adc_value)/adc_value;
+    val =  Rl + val; 
     Delay_1us(2000000);
-    }
-  }    
-
-bool preheat(){
-    int count_heat = 10;
-    sprintf(buffer2, " time heat = %d \n",count_heat);
-    usart_puts(buffer2);
-    int i;
-    for (i=0; i<10;i++){
-      Delay_1us(2000000);
-      count_heat --;
-      sprintf(buffer2, " time heat = %d \n",count_heat);
-      usart_puts(buffer2);
-      }
-    check_heat = true;
-    return check_heat;
   }
-
-
-bool calibration_ro(){
- 
-  uint16_t adc_value = 0;
-  sum =0;
-  int i;
-  for (i =0; i<100;i++){
-      adc_value = ADC_GetConversionValue(ADC1);
-      sum =  adc_value + sum;
-      Delay_1us(1000);
-      }   
-    adc_average = sum/100;
-    Vout = (adc_average*3.3)/4095;
-    RSAir = ((Volt_sensor*RL)/Vout)-RL;
-    Ro_Cal =  RSAir / ratio_clean_air;
-
-    sprintf(buffer2, " Ro_Cal = %f \n",ppm);
-    usart_puts(buffer2);
-    Ro_cal_bol = true;
-    return Ro_cal_bol;
-
+  val = val/5.0;
+  val = val/9.83;
+  return val;
 }
 
-void read_CO(){
-  
-  uint16_t adc_value = 0;
-  sum =0;
+float MQRead(void)
+{
   int i;
-  Ro = Ro_Cal;
-  ////// CAL RO FINSHED //////////
-  for (i=0; i<10;i++){
-      adc_value = ADC_GetConversionValue(ADC1);
-      sum =  adc_value + sum;
-    }   
-    adc_average = sum/10;
-    Vout = (adc_average*3.3)/4095; 
-    RSAir = ((Volt_sensor*RL)/Vout)-RL;
-    //////////GET RATIO Using Ro from calibaration
-    Ratio = RSAir/Ro;
-    ppm = 99.042 * (pow(Ratio, -1.518));
-    PPM = ppm;
-    if(ppm <= 0)
-    {
-      ppm=0;
-    }
-    if(ppm > 1000)
-    {
-      ppm=999;
-    }
-    sprintf(buffer2, "  Ratio = %f ro = %f \n",Ratio,Ro);
-    usart_puts(buffer2);
-    sprintf(buffer2, " CO_ppm = %f  CO_PPM = %d \n",ppm,PPM);
-    usart_puts(buffer2);
-    
+  float rs=0;
+
+  for (i=0;i<5;i++) {
+    adc_value = ADC_GetConversionValue(ADC1);
+    rs = 10.0*(4095-adc_value)/adc_value;
+    val =  rs + val;     
+    Delay_1us(2000000);
   }
 
+  rs = rs/5;
+  return rs;  
+}
+
+
+
+
+int main(void)
+{
+  init_adc();
+  init_usart1();
+  //setup_LEDb();
+  Delay_1us(10000);
+  float ro = MQCalibration();
+  sprintf(buffer2, "Ro = %f \r\n",ro );
+    usart_puts(buffer2);
+
+
+
+while (1) {
+    usart_puts("HELLO WORLD \r\n");
+    
+    uint8_t PPM;
+
+    // sprintf(buffer2, "Ro = %f \r\n",ro );
+    // usart_puts(buffer2);
+    float rs_read = MQRead();
+    float rs_ro_ratio = rs_read/ro;
+    sprintf(buffer2, "rs_ro_ratio = %f \r\n",rs_ro_ratio );
+    usart_puts(buffer2);
+    float CoPPM =  pow(10,( ((log(rs_ro_ratio)-0.20)/-0.66) + 1.7));
+    sprintf(buffer2, "CoPPM = %f \r\n",CoPPM );
+    usart_puts(buffer2);
+
+    
+
+
+    // sprintf(buffer2, "Vout : %f RSAir = %f Ro = %f RL = %d \n",Vout,RSAir,Ro,RL );
+    // //i = 0;
+
+    // adc_average = sum/5;
+    // Vout = (adc_average*3.3)/4095;
+
+
+    // RSAir = (((3.3 * RL ) / Vout)-RL);
+    // if(RSAir < 0)
+    // {
+    //   RSAir =0;
+    // }
+
+    // Ro = RSAir/27.5;
+    // if (Ro < 0)
+    // {
+    //   Ro = 0;
+    // }
+
+    // RS = (((3.3 *RL ) / Vout)-RL);
+    // if(RS < 0)
+    // {
+    //   RS = 0;
+    // }
+
+    // Ratio = RS / Ro;
+    // if(Ratio <= 0 || Ratio >100)
+    // {
+    //   Ratio = 0.01;
+    // }
+
+    // ppm = 99.014 * (pow(Ratio, -1.518));
+    // PPM = ppm;
+
+    // if(ppm <= 0)
+    // {
+    //   ppm=0;
+    // }
+    // if(ppm > 1000)
+    // {
+    //   ppm=999;
+    // }
+
+    // sprintf(buffer2, "Vout : %f RSAir = %f Ro = %f RL = %d \n",Vout,RSAir,Ro,RL );
+    // sprintf(buffer, "PPMout : %f PPM : %d \n",ppm,PPM);
+    // usart_puts(buffer2); 
+    // usart_puts(buffer); 
+
+	}
+
+    // if (co_out <= 500 && co_out > 10 ) {
+    // 	sprintf(buffer, "ADC_Value: %d \n",adc_average);
+    // 	sprintf(buffer2, "co_out: %.02f \n",Vout);
+    // 	usart_puts(buffer);
+    // 	usart_puts(buffer2);
+    // 	Delay_1us(100000);
+    // 	sum = 0;
+    // 	Vout = 0;
+    // 	adc_average = 0;
+    // 	adc_value = 0;
+    // }
+    // else {
+    // 	 usart_puts("Out_of_range");
+    // 	 sum = 0;
+    // 	 Vout = 0;
+    // 	 adc_average = 0;
+    // 	 adc_value = 0;
+    // }
+
+}
