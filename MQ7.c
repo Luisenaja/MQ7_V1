@@ -29,6 +29,7 @@ static inline void Delay_1us(uint32_t nCnt_1us)
 
 void MQ7_init(ADC_TypeDef *_adc){
   adc = _adc;
+
 }
 
 

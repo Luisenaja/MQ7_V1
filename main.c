@@ -162,7 +162,7 @@ int main(void){
   init_usart1();
   setup_LEDb();
 
-  MQ7_init(ADC1)
+  MQ7_init(ADC1);
   
   preheat();
   usart_puts("heat complete\n"); 
@@ -171,14 +171,14 @@ int main(void){
   
 
 
-  uint8_t* CO_PPM;
+  uint8_t CO_PPM;
   char buffer2[80];
   
   while (1) {
 
     read_CO(&CO_PPM);
     usart_puts("Finshed reading\n");
-    sprintf(buffer2, "CO_PPM = %d \n",*CO_PPM);
+    sprintf(buffer2, "CO_PPM = %d \n",CO_PPM);
     usart_puts(buffer2);
     Delay_1us(2000000);
     

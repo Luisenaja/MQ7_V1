@@ -28,6 +28,7 @@ SRC+=	./system_stm32f10x.c \
 
 #Included Header Files
 CFLAGS_INCLUDE=-I./ \
+		-I./MQ7\
 		-I$(CMSIS)/CM3/CoreSupport \
 		-I$(CMSIS)/CM3/DeviceSupport/ST/STM32F10x \
 		-I$(ST)/inc 
@@ -38,7 +39,8 @@ USER_LIB=../User_Lib
 
 #User Source Files
 SRC+=	./main.c \
-		./stm32f10x_it.c 
+		./stm32f10x_it.c\
+		./MQ7.c 
 
 
 #User Header Files
@@ -62,7 +64,6 @@ CFLAGS_WARNING= \
 		-Wdouble-promotion \
 		-Werror=array-bounds \
 		-Wfatal-errors \
-		-Wmissing-prototypes \
 		-Wbad-function-cast \
 		-Wmissing-parameter-type
 		
