@@ -11,6 +11,7 @@ int sum =0;
 float Vout = 0;
 float Co_out = 0;
 bool preheat(void);
+void read_CO(void); 
   
     float RSAir=0;
     float Ro=0;
@@ -19,6 +20,7 @@ bool preheat(void);
     float ppm=0;
     int RL = 1000;
     uint8_t PPM;
+    float Ro_Cal = 0;
     //char buffer[80] = {'\0'};
     char buffer2[80] = {'\0'};
     bool check_heat = false;
@@ -198,22 +200,63 @@ int main(void){
 
   while (check_heat == false){
     preheat();
-  } 
+    } 
+    read_CO();
+    usart_puts("Finshed reading\n");
+    Delay_1us(2000000);
+  }    
+}
 
-  int16_t adc_value = 0;
-  int i=0;
-  sum =0; 
+bool preheat(){
+    int count_heat = 10;
+    sprintf(buffer2, " time heat = %d \n",count_heat);
+    usart_puts(buffer2);
+    int i;
+    for (i=0; i<10;i++){
+      Delay_1us(2000000);
+      count_heat --;
+      sprintf(buffer2, " time heat = %d \n",count_heat);
+      usart_puts(buffer2);
+      }
+    check_heat = true;
+    return check_heat;
+  }
 
+
+float calibration_ro(){
+ 
+  uint16_t adc_value = 0;
+  sum =0;
+  int i;
   for (i =0; i<10;i++){
       adc_value = ADC_GetConversionValue(ADC1);
-      sum =  adc_value + sum; 
-      Delay_1us(20000);
-    }
+      sum =  adc_value + sum;
+      }   
+      adc_average = sum/10;
+      Vout = (adc_average*3.3)/4095;
+    RSAir = ((5.0*1)/Vout)-1;
+    Ro_Cal =  RSAir / 27.5 ;
+    sprintf(buffer2, " Ro_Cal = %f \n",ppm);
+    usart_puts(buffer2);
+    return  Ro_Cal; 
+}
+
+void read_CO(){
+  
+  uint16_t adc_value = 0;
+  sum =0;
+  Ro = calibration_ro();
+  int i;
+  ////// CAL RO FINSHED //////////
+  for (i=0; i<10;i++){
+      adc_value = ADC_GetConversionValue(ADC1);
+      sum =  adc_value + sum;
+    }   
     adc_average = sum/10;
     Vout = (adc_average*3.3)/4095; 
     RSAir = ((5.0*1)/Vout)-1;
-    Ratio = RSAir/0.46; 
-    //Delay_1us(200000);
+    //////////GET RATIO Using Ro from calibaration
+    Ratio = RSAir/Ro;
     ppm = 99.0415 * (pow(Ratio, -1.5184));
     if(ppm <= 0)
     {
@@ -223,26 +266,10 @@ int main(void){
     {
       ppm=999;
     }
-
+    sprintf(buffer2, "  Ratio = %f \n",Ratio);
+    usart_puts(buffer2);
     sprintf(buffer2, " CO_ppm = %f \n",ppm);
     usart_puts(buffer2);
-    //ppm =0;
-    }    
-}
-
-bool preheat(){
-    int i =0;
-    int count_heat = 10;
-    sprintf(buffer2, " time heat = %d \n",count_heat);
-    usart_puts(buffer2);
-    for (i =0; i<10;i++){
-      Delay_1us(4000000);
-      count_heat --;
-      sprintf(buffer2, " time heat = %d \n",count_heat);
-      usart_puts(buffer2);
-      check_heat = true;
-    }
-    return check_heat;
+    
   }
-
 
