@@ -1,34 +1,14 @@
 #include "stm32f10x.h"
 #include "stm32f10x_conf.h"
+#include "MQ7.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h> 
-#define ratio_clean_air 27.5
-#define RL 10.0
-#define Volt_sensor 5
+////////////////////////////////////////
+void setup_LEDb(void);
+void init_usart1(void);
+void init_adc(void);
 
-///////// define fuction ///////////////
-void send_byte(uint8_t b);
-void usart_puts(char* s);
-void read_CO(void);
-bool calibration_ro(void); 
-
-
-int adc_average =0;
-int sum =0;
-float Vout = 0;
-bool preheat(void);
-
-  
-    float RSAir=0;
-    float Ro=0;
-    float Ro_Cal = 0;
-    double Ratio=0; 
-    float ppm=0;
-    uint8_t PPM;
-    char buffer2[80] = {'\0'};
-    bool check_heat = false;
-    bool Ro_cal_bol;
 
 static inline void Delay_1us(uint32_t nCnt_1us)
 {
@@ -38,24 +18,7 @@ static inline void Delay_1us(uint32_t nCnt_1us)
     for (nCnt = 13; nCnt != 0; nCnt--);
 }
 
-void gpio_toggle(GPIO_TypeDef *GPIOx, uint16_t GPIO_Pin);
-void gpio_toggle(GPIO_TypeDef *GPIOx, uint16_t GPIO_Pin)
-{
-	GPIOx->ODR ^= GPIO_Pin;
-}
 
-static inline void Delay(uint32_t nCnt_1us)
-{
-
-			while(nCnt_1us--);
-}
-/* Refer to stm32f10x_adc.c */
-#define ADC1_DR_ADDRESS                  ((uint32_t)0x4001244C)
-
-/* Store sampled value here  */
-volatile uint32_t ADCConvertedValue;
-
-void init_usart1(void);
 void init_usart1()
 {
 
@@ -121,10 +84,8 @@ void usart_puts(char* s)
 }
 
 
-void init_adc(void);
 void init_adc()
 {
-  DMA_InitTypeDef DMA_InitStructure;
   ADC_InitTypeDef ADC_InitStructure;
   GPIO_InitTypeDef GPIO_InitStructure;
    /* ADCCLK = PCLK2/4 */
@@ -181,7 +142,6 @@ void init_adc()
 
 }
 
-void setup_LEDb(void);
 void setup_LEDb(){
 	GPIO_InitTypeDef GPIO_InitStructure;
 
@@ -197,98 +157,33 @@ void setup_LEDb(){
 
 
 int main(void){
+  
   init_adc();
   init_usart1();
   setup_LEDb();
-  Ro_cal_bol = false;
 
+  MQ7_init(ADC1)
+  
+  preheat();
+  usart_puts("heat complete\n"); 
+  calibration_ro();
+  usart_puts("Calibration complete\n");
+  
+
+
+  uint8_t* CO_PPM;
+  char buffer2[80];
   
   while (1) {
 
-  while (check_heat == false){
-    preheat();
-    usart_puts("heat complete\n");
-    } 
-
-    if (Ro_cal_bol == false){
-    calibration_ro();
-    usart_puts("Calibration complete\n");
-    }
-
-    read_CO();
+    read_CO(&CO_PPM);
     usart_puts("Finshed reading\n");
+    sprintf(buffer2, "CO_PPM = %d \n",*CO_PPM);
+    usart_puts(buffer2);
     Delay_1us(2000000);
+    
     }
   }    
 
-bool preheat(){
-    int count_heat = 10;
-    sprintf(buffer2, " time heat = %d \n",count_heat);
-    usart_puts(buffer2);
-    int i;
-    for (i=0; i<10;i++){
-      Delay_1us(2000000);
-      count_heat --;
-      sprintf(buffer2, " time heat = %d \n",count_heat);
-      usart_puts(buffer2);
-      }
-    check_heat = true;
-    return check_heat;
-  }
 
-
-bool calibration_ro(){
- 
-  uint16_t adc_value = 0;
-  sum =0;
-  int i;
-  for (i =0; i<100;i++){
-      adc_value = ADC_GetConversionValue(ADC1);
-      sum =  adc_value + sum;
-      Delay_1us(1000);
-      }   
-    adc_average = sum/100;
-    Vout = (adc_average*3.3)/4095;
-    RSAir = ((Volt_sensor*RL)/Vout)-RL;
-    Ro_Cal =  RSAir / ratio_clean_air;
-
-    sprintf(buffer2, " Ro_Cal = %f \n",ppm);
-    usart_puts(buffer2);
-    Ro_cal_bol = true;
-    return Ro_cal_bol;
-
-}
-
-void read_CO(){
-  
-  uint16_t adc_value = 0;
-  sum =0;
-  int i;
-  Ro = Ro_Cal;
-  ////// CAL RO FINSHED //////////
-  for (i=0; i<10;i++){
-      adc_value = ADC_GetConversionValue(ADC1);
-      sum =  adc_value + sum;
-    }   
-    adc_average = sum/10;
-    Vout = (adc_average*3.3)/4095; 
-    RSAir = ((Volt_sensor*RL)/Vout)-RL;
-    //////////GET RATIO Using Ro from calibaration
-    Ratio = RSAir/Ro;
-    ppm = 99.042 * (pow(Ratio, -1.518));
-    PPM = ppm;
-    if(ppm <= 0)
-    {
-      ppm=0;
-    }
-    if(ppm > 1000)
-    {
-      ppm=999;
-    }
-    sprintf(buffer2, "  Ratio = %f ro = %f \n",Ratio,Ro);
-    usart_puts(buffer2);
-    sprintf(buffer2, " CO_ppm = %f  CO_PPM = %d \n",ppm,PPM);
-    usart_puts(buffer2);
-    
-  }
 
